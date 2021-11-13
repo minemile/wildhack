@@ -56,7 +56,7 @@ class AutoCompleteByInvertedIndex(AutoCompleteBySuffix):
         inverted_index,
         trie,
         spell_checker,
-        queries_score_thr=1, # zero for no fix
+        queries_score_thr=1,  # zero for no fix
         first_prefix=None,
         max_candidates=20,
     ):
@@ -77,53 +77,65 @@ class AutoCompleteByInvertedIndex(AutoCompleteBySuffix):
     def query(self, query, max_n=None):
         splitted_query = self.preprocess_query(query)
         query_candidates_all = []
-        for word in splitted_query:
+        for indx, word in enumerate(splitted_query):
             candidates = self.get_candidates(word)
             candidates_queries = self.get_queries_from_inverted_index(candidates)
             candidate_queries_score = self.calculate_score_for_candidates_queries(
                 candidates_queries
             )
-            print(f"Original query score: {candidate_queries_score}")
+            print(f"Original query score for {word}: {candidate_queries_score}")
             # try to fix spelling
             if candidate_queries_score <= self.queries_score_thr:
                 (
+                    fixed_word,
                     fixed_word_candidates,
                     fixed_word_score,
                 ) = self.fix_word_and_get_candidates(word)
                 if fixed_word_score > candidate_queries_score:
                     candidates_queries = fixed_word_candidates
+                    splitted_query[indx] = fixed_word
 
             query_candidates_all.append(candidates_queries)
+        query = " ".join(splitted_query)
+        # return query_candidates_all
         result = self.intersect_candidates(query_candidates_all)
+        # return result
         result = self.prepare_output(result, query, max_n)
         return result
 
     def fix_word_and_get_candidates(self, word):
         fixed_words = self.spell_checker.GetCandidates([word], 0)
+        if not fixed_words:
+            return None, None, 0
         fixed_word = fixed_words[0]
         if fixed_word == word:
             fixed_word = fixed_words[1]
         print(f"Fixed word {word} -> {fixed_word}")
         candidates_for_fixed_word = self.get_candidates(fixed_word)
-        candidates_queries_for_fixed_word = self.get_queries_from_inverted_index(
+        candidates_queries = self.get_queries_from_inverted_index(
             candidates_for_fixed_word
         )
-        candidate_queries_score_for_fixed_word = self.calculate_score_for_candidates_queries(
-            candidates_queries_for_fixed_word
+        candidate_queries_score = self.calculate_score_for_candidates_queries(
+            candidates_queries
         )
-        return candidates_queries_for_fixed_word, candidate_queries_score_for_fixed_word
+        return fixed_word, candidates_queries, candidate_queries_score
 
     def calculate_score_for_candidates_queries(self, candidates_queries):
-        if len(candidates_queries) == 0:
+        queries_length = len(candidates_queries)
+        if queries_length == 0:
             return 0
         scores = []
+        ones = []
         for candidate_query in candidates_queries:
             popularity = candidate_query.popularity
-            if popularity > 1:
-                scores.append(candidate_query.popularity)
+            if popularity > 1:  # only 'high' frequence queries
+                scores.append(popularity)
+            else:
+                ones.append(popularity)
         if len(scores) == 0:
             return 0
-        return statistics.mean(scores)
+        # return statistics.mean(scores)
+        return 1 - sum(ones) / queries_length
 
     def get_candidates(self, word):
         candidates = self.trie.query(word)
@@ -132,8 +144,9 @@ class AutoCompleteByInvertedIndex(AutoCompleteBySuffix):
         return candidates
 
     def prepare_output(self, result, original_query, max_n=None):
-        sorted_result = sorted(result, key=lambda x: x.popularity, reverse=True)
-        sorted_result = self.delete_duplicates(sorted_result)
+        # 100 is more than enough
+        sorted_result = sorted(result, key=lambda x: x.popularity, reverse=True)[:100]
+        print(f"Got {len(sorted_result)} raw results")
         if self.first_prefix is not None:
             return self.make_result_with_first_prefix(
                 original_query, sorted_result, max_n
@@ -142,25 +155,54 @@ class AutoCompleteByInvertedIndex(AutoCompleteBySuffix):
             sorted_result = sorted_result[:max_n]
         return sorted_result
 
-    # def delete_duplicates(self, sorted_result):
-        # 
+    def set_lemma_to_candidates_by_query(self, query, candidates):
+        query_lemmas = query.lemmas
+        query_lemmas_len = len(query_lemmas)
+        for candidate in candidates:
+            if query_lemmas_len < len(candidate.lemmas):
+                continue
+            if candidate.is_lemma_of():
+                continue
+            full_match = True
+            for query_lemma in query_lemmas:
+                if query_lemma not in candidate.lemmas:
+                    full_match = False
+            if full_match:
+                candidate.set_lemma_of(query_lemmas)
 
     def make_result_with_first_prefix(self, original_query, result, max_n):
         prefix_list = []
+        original_query_length = len(original_query.split())
         for query_results in result:
             if len(prefix_list) >= self.first_prefix:
                 break
+            if original_query_length + 2 < len(query_results.lemmas):
+                continue
+            if query_results.is_lemma_of():
+                continue
             if query_results.words.startswith(original_query):
                 prefix_list.append(query_results)
+                self.set_lemma_to_candidates_by_query(query_results, result)
 
         sorted_result_sublist = []
         for query_results in result:
             if len(sorted_result_sublist) >= max_n - self.first_prefix:
                 break
+            if original_query_length + 2 < len(query_results.lemmas):
+                continue
+            if query_results.is_lemma_of():
+                continue
             if query_results not in prefix_list:
                 sorted_result_sublist.append(query_results)
+                self.set_lemma_to_candidates_by_query(query_results, result)
+
+        self.reset_queries_lemmas_of(result)
         sorted_result = prefix_list + sorted_result_sublist
         return sorted_result
+
+    def reset_queries_lemmas_of(self, queries):
+        for query in queries:
+            query.reset_lemma_of()
 
     def intersect_candidates(self, candidates):
         return set.intersection(*candidates)
