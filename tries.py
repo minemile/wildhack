@@ -95,8 +95,8 @@ class Trie(object):
 def make_trie(query_database):
     trie = Trie()
     print(f"Making database for queries... It length: {len(query_database)}")
-    for indx, row in query_database.iterrows():
-        words = row["query"].split()
+    for row in query_database:
+        words = row.split()
         for word in words:
             trie.insert(word, 0)
     return trie
