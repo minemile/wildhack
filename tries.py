@@ -88,4 +88,15 @@ class Trie(object):
         self.dfs(node, x[:-1])
 
         # Sort the results in reverse order and return
-        return sorted(self.output, key=lambda x: x[2], reverse=True)
+        # return sorted(self.output, key=lambda x: x[1], reverse=True)
+        return self.output
+
+
+def make_trie(query_database):
+    trie = Trie()
+    print(f"Making database for queries... It length: {len(query_database)}")
+    for indx, row in query_database.iterrows():
+        words = row["query"].split()
+        for word in words:
+            trie.insert(word, 0)
+    return trie
