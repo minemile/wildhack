@@ -31,15 +31,17 @@ class AutoCompleterBaseline():
 
 
 class AutoCompleteBySuffix():
-    def __init__(self, query_database, max_n=10):
-        self.query_database = query_database
-        self.trie = self.make_trie()
+    def __init__(self, max_n=10):
+        self.trie = Trie()
     
-    def make_trie(self):
-        trie = Trie()
-        for indx, row in self.query_database.iterrows():
+    def make_trie(self, query_database):
+        print(f"Making database for queries... It length: {len(query_database)}")
+        for indx, row in query_database.iterrows():
             words = row['query']
             popularity = row['query_popularity']
-            trie.insert(words, popularity)
+            self.trie.insert(words, popularity)
+
+    def query(self, query):
+        return self.trie.query(query)
 
 

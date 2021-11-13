@@ -11,9 +11,6 @@ class Query:
     def __repr__(self) -> str:
         return f"Query indx: {self.indx}. Words: {self.words}"
 
-    
-
-
 class InvertedIndex:
     def __init__(self):
         self.inverted_index = defaultdict(set)
