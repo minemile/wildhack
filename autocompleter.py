@@ -146,7 +146,7 @@ class AutoCompleteByInvertedIndex(AutoCompleteBySuffix):
     def prepare_output(self, result, original_query, max_n=None):
         # 100 is more than enough
         sorted_result = sorted(result, key=lambda x: x.popularity, reverse=True)[:100]
-        print(f"Got {len(sorted_result)} raw results")
+        # print(f"Got {len(sorted_result)} raw results")
         if self.first_prefix is not None:
             return self.make_result_with_first_prefix(
                 original_query, sorted_result, max_n

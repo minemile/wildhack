@@ -18,6 +18,7 @@ class TrieNode:
         # keys are characters, values are nodes
         self.children = {}
 
+
 class Trie(object):
     """The trie object"""
 
@@ -27,11 +28,11 @@ class Trie(object):
         The root node does not store any character
         """
         self.root = TrieNode("")
-    
+
     def insert(self, word, popularity=None):
         """Insert a word into the trie"""
         node = self.root
-        
+
         # Loop through each character in the word
         # Check if there is no child containing the character, create a new child for the current node
         for char in word:
@@ -45,13 +46,13 @@ class Trie(object):
 
                 node.children[char] = new_node
                 node = new_node
-        
+
         # Mark the end of a word
         node.is_end = True
 
         # Increment the counter to indicate that we see this word once more
         node.counter += 1
-        
+
     def dfs(self, node, prefix):
         """Depth-first traversal of the trie
         
@@ -62,10 +63,10 @@ class Trie(object):
         """
         if node.is_end:
             self.output.append((prefix + node.char, node.counter, node.popularity))
-        
+
         for child in node.children.values():
             self.dfs(child, prefix + node.char)
-        
+
     def query(self, x):
         """Given an input (a prefix), retrieve all words stored in
         the trie with that prefix, sort the words by the number of 
@@ -75,7 +76,7 @@ class Trie(object):
         # As there can be more than one word with such prefix
         self.output = []
         node = self.root
-        
+
         # Check if the prefix is in the trie
         for char in x:
             if char in node.children:
@@ -83,7 +84,7 @@ class Trie(object):
             else:
                 # cannot found the prefix, return empty list
                 return []
-        
+
         # Traverse the trie to get all candidates
         self.dfs(node, x[:-1])
 

@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 import pickle
-import resource
 import sys
 
 import pandas as pd
@@ -29,12 +28,9 @@ def parse_args():
 
 
 def create_uq_to_lemma_map(df, save_to):
-    uq_to_lemma_map = {}
-    for idx, row in df[["UQ", "lem_uq"]].iterrows():
-        if row["UQ"] in uq_to_lemma_map:
-            continue
-        uq_to_lemma_map[row["UQ"]] = row["lem_uq"]
-    with open(os.path.join(save_to, "uq_to_lemma_map.json"), 'w') as f:
+    df_ = df.set_index("UQ")
+    uq_to_lemma_map = df_["lem_uq"].to_dict()
+    with open(os.path.join(save_to, "uq_to_lemma_map.json"), "w") as f:
         json.dump(uq_to_lemma_map, f)
     return uq_to_lemma_map
 

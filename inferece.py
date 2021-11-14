@@ -1,22 +1,11 @@
 import argparse
-import json
 import os
-import string
+import pickle
 
 import jamspell
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 
-from autocompleter import (
-    AutoCompleteByInvertedIndex,
-    AutoCompleteBySuffix,
-    AutoCompleterBaseline,
-)
-from dataset_prepare import DropDuplicates, FilterByQuantile, ToStrLower
-from inverted_index import InvertedIndex
-from tries import make_trie
-import pickle
+from autocompleter import AutoCompleteByInvertedIndex
+from telegram_bot import AutoCompleteTelegramBot
 
 QUERIES_SCORE_THR = 0.1
 FIRST_PREFIX = 5
@@ -28,7 +17,10 @@ def parse_args():
     parser.add_argument("--cache_dir", type=str, help="path to cache dir...")
     parser.add_argument("--speller_bin", type=str, help="path to speller bin...")
     parser.add_argument("--query", type=str, help="Type your's query...")
-    parser.add_argument("--endless", type=bool, help="run application on user inputs...")
+    parser.add_argument(
+        "--endless", type=bool, help="run application on user inputs..."
+    )
+    parser.add_argument("--bot_api", type=str, help="telegram bot token")
     return parser.parse_args()
 
 
@@ -63,9 +55,14 @@ if __name__ == "__main__":
         queryes = autocomplete_by_inverted_index.query(args.query, max_n=10)
         for query in queryes:
             print(f"Proposal: {query.words}. Score: {query.popularity}")
-    else:
+    elif args.bot_api is not None:
+        telegram_bot = AutoCompleteTelegramBot(
+            args.bot_api, autocomplete_by_inverted_index
+        )
+        telegram_bot.start()
+    elif args.endless:
         while True:
-            query = str(input('Enter query: '))
+            query = str(input("Enter query: "))
             queryes = autocomplete_by_inverted_index.query(query, max_n=10)
             for query in queryes:
                 print(f"Proposal: {query.words}. Score: {query.popularity}")
